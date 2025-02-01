@@ -1,0 +1,19 @@
+[package]
+name = "id_newtype"
+version = "0.1.0"
+description = "Implements logic for a `Cow<'static, str>` newtype where only `[A-Za-z0-9_]` are valid characters."
+documentation = "https://docs.rs/id_newtype/"
+authors = ["Azriel Hoh <azriel91@gmail.com>"]
+edition = "2021"
+homepage = "https://github.com/azriel91/id_newtype"
+repository = "https://github.com/azriel91/id_newtype"
+readme = "README.md"
+categories = ["config"]
+keywords = ["serde", "yaml", "error"]
+license = "MIT OR Apache-2.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2.100"
