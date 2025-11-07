@@ -30,10 +30,20 @@ license.workspace = true
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[features]
+default = []
+macros = ["dep:id_newtype_macros"]
+
+[dependencies]
+id_newtype_macros = { workspace = true, optional = true }
+
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = { workspace = true }
 
 [workspace.dependencies]
+id_newtype_macros = { path = "id_newtype_macros", version = "0.1.0" }
+
+# external dependencies
 proc-macro2 = "1.0.103"
 quote = "1.0.42"
 syn = "2.0.109"
