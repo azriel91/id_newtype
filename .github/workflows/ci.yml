@@ -143,3 +143,14 @@ jobs:
 
       - name: "Build examples"
         run: wasm-pack build --target web --release
+
+  doc_tests_linux:
+    name: Build and Test (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: "Doc tests"
+        run: cargo test --workspace --doc --all-features

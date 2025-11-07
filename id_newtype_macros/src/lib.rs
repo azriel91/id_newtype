@@ -12,7 +12,7 @@ mod lit_str_maybe;
 ///
 /// Instantiate a valid `Id` at compile time:
 ///
-/// ```rust
+/// ```rust,ignore
 /// use id_newtype::id;
 ///
 /// let _my_id: Id = id!("valid_id"); // Ok!

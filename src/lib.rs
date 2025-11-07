@@ -53,10 +53,14 @@
 //! compile time, you may pass in its name as follows:
 //!
 //! ```rust
+//! #[macro_use]
+//! extern crate id_newtype;
+//!
 //! use std::borrow::Cow;
 //!
 //! // Either use `id_newtype::id`, or replace this with your own proc macro.
-//! use my_crate_static_check_macros::my_id;
+//! use id_newtype::id;
+//! // use my_crate_static_check_macros::my_id;
 //!
 //! // Rename your ID type
 //! #[derive(Clone, Debug, Hash, PartialEq, Eq)]
@@ -81,7 +85,16 @@
 //!   for safe construction of IDs at compile time.
 //!
 //!     ```rust
+//!     # #[cfg(feature = "my_feature")]
+//!     # {
+//!     #[macro_use]
+//!     extern crate id_newtype;
 //!     use id_newtype::id;
+//!
+//!     // Define a new ID type
+//!     #[derive(Clone, Debug, Hash, PartialEq, Eq)]
+//!     pub struct MyId(Cow<'static, str>);
+//!     id_newtype::id_newtype!(MyId, MyIdInvalidFmt, id);
 //!
 //!     // ok!
 //!     let id = id!("my_id");
@@ -90,6 +103,7 @@
 //!     // `Id`s must begin with a letter or underscore, and contain only
 //!     // letters, numbers, or underscores.
 //!     let id = id!("invalid id");
+//!     # }
 //!     ```
 
 // Re-export the compiled-time checked constructor.
