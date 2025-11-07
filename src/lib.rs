@@ -22,6 +22,15 @@
 //!
 //! # Usage
 //!
+//! In `Cargo.toml`:
+//!
+//! ```toml
+//! id_newtype = "0.2.0" # or
+//! id_newtype = { version = "0.2.0", features = ["macros"] }
+//! ```
+//!
+//! In code:
+//!
 //! ```rust
 //! // in lib.rs
 //! #[macro_use]
