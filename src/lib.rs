@@ -253,8 +253,6 @@ macro_rules! id_newtype {
 mod tests {
     use std::borrow::{Borrow, Cow};
 
-    use super::id_newtype;
-
     #[derive(Clone, Debug, Hash, PartialEq, Eq)]
     pub struct MyIdType(Cow<'static, str>);
 
