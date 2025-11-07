@@ -4,7 +4,7 @@ on:
       - main
   pull_request:
     branches:
-      - '**'
+      - "**"
 
 name: CI
 
@@ -15,9 +15,27 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-        # Needed for audit-check@v2
-      - name: generate Cargo.lock
+      - name: "Generate Cargo.lock"
         run: cargo generate-lockfile
+
+      - name: cargo-audit cache restore
+        id: cargo-audit_cache_restore
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cargo/bin/cargo-audit
+          key: ${{ runner.os }}-cargo-audit
+
+      - run: cargo install cargo-audit
+        if: steps.cargo-audit_cache_restore.outputs.cache-hit != 'true'
+
+      - name: cargo-audit cache save
+        id: cargo-audit_cache_save
+        uses: actions/cache/save@v4
+        if: always() && steps.cargo-audit_cache_restore.outputs.cache-hit != 'true'
+        with:
+          path: ~/.cargo/bin/cargo-audit
+          key: ${{ runner.os }}-cargo-audit
+
       - uses: rustsec/audit-check@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -78,7 +96,7 @@ jobs:
       - uses: taiki-e/install-action@cargo-llvm-cov
       - uses: taiki-e/install-action@nextest
 
-      - name: 'Collect coverage'
+      - name: "Collect coverage"
         run: ./coverage.sh
 
       - name: Upload to codecov.io
@@ -96,7 +114,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: taiki-e/install-action@nextest
-      - name: 'Build and test'
+      - name: "Build and test"
         run: cargo nextest run --workspace --all-targets
 
   build_and_test_windows:
@@ -111,7 +129,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: taiki-e/install-action@nextest
-      - name: 'Build and test'
+      - name: "Build and test"
         run: cargo nextest run --workspace --all-targets
 
   build_wasm:
@@ -123,5 +141,16 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: taiki-e/install-action@wasm-pack
 
-      - name: 'Build examples'
+      - name: "Build examples"
         run: wasm-pack build --target web --release
+
+  doc_tests_linux:
+    name: Build and Test (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: "Doc tests"
+        run: cargo test --workspace --doc --all-features

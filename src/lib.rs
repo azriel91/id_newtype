@@ -22,48 +22,93 @@
 //!
 //! # Usage
 //!
-//! ```rust
-//! use std::borrow::Cow;
+//! In `Cargo.toml`:
 //!
-//! use id_newtype::id_newtype;
+//! ```toml
+//! id_newtype = "0.2.0" # or
+//! id_newtype = { version = "0.2.0", features = ["macros"] }
+//! ```
+//!
+//! In code:
+//!
+//! ```rust
+//! // in lib.rs
+//! #[macro_use]
+//! extern crate id_newtype;
+//!
+//! // in your ID module, e.g. `my_id.rs`
+//! use std::borrow::Cow;
 //!
 //! // Rename your ID type
 //! #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-//! pub struct MyIdType(Cow<'static, str>);
+//! pub struct MyId(Cow<'static, str>);
 //!
-//! id_newtype!(
-//!     MyIdType,           // Name of the ID type
-//!     MyIdTypeInvalidFmt  // Name of the invalid value error
+//! id_newtype::id_newtype!(
+//!     MyId,           // Name of the ID type
+//!     MyIdInvalidFmt  // Name of the invalid value error
 //! );
 //! ```
 //!
 //! If you have a procedural macro that checks for ID validity<sup>1</sup> at
 //! compile time, you may pass in its name as follows:
 //!
-//! ```rust,ignore
+//! ```rust
+//! #[macro_use]
+//! extern crate id_newtype;
+//!
 //! use std::borrow::Cow;
 //!
-//! use id_newtype::id_newtype;
-//!
-//! // replace this with your ID type's macro
-//! use my_crate_static_check_macros::my_id_type;
+//! // Either use `id_newtype::id`, or replace this with your own proc macro.
+//! use id_newtype::id;
+//! // use my_crate_static_check_macros::my_id;
 //!
 //! // Rename your ID type
 //! #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-//! pub struct MyIdType(Cow<'static, str>);
+//! pub struct MyId(Cow<'static, str>);
 //!
-//! id_newtype!(
-//!     MyIdType,           // Name of the ID type
-//!     MyIdTypeInvalidFmt, // Name of the invalid value error
-//!     my_id_type          // Name of the static check macro
+//! id_newtype::id_newtype!(
+//!     MyId,           // Name of the ID type
+//!     MyIdInvalidFmt, // Name of the invalid value error
+//!     my_id           // Name of the proc macro
 //! );
 //! ```
 //!
-//! <sup>1</sup> This crate was extracted from `peace`, so the
-//! `my_crate_static_check_macros` is not generated for you. You must implement
-//! it yourself. See [`static_check_macros`] for an example.
+//! <sup>1</sup> You can either enable the `"macros"` feature and have access to
+//! the `id!` macro, or implement your own proc macro. See
+//! [`id_newtype_macros`][macros_crate] for an example.
 //!
-//! [`static_check_macros`]: https://github.com/azriel91/peace/tree/0.0.14/crate/static_check_macros
+//! [macros_crate]: https://github.com/azriel91/id_newtype/id_newtype_macros
+//!
+//! ## Features
+//!
+//! * `"macros"` This feature enables the `id!` compile-time checked proc macro
+//!   for safe construction of IDs at compile time.
+//!
+//!     ```rust
+//!     # #[cfg(feature = "my_feature")]
+//!     # {
+//!     #[macro_use]
+//!     extern crate id_newtype;
+//!     use id_newtype::id;
+//!
+//!     // Define a new ID type
+//!     #[derive(Clone, Debug, Hash, PartialEq, Eq)]
+//!     pub struct MyId(Cow<'static, str>);
+//!     id_newtype::id_newtype!(MyId, MyIdInvalidFmt, id);
+//!
+//!     // ok!
+//!     let id = id!("my_id");
+//!
+//!     // `id` is not a valid `Id`
+//!     // `Id`s must begin with a letter or underscore, and contain only
+//!     // letters, numbers, or underscores.
+//!     let id = id!("invalid id");
+//!     # }
+//!     ```
+
+// Re-export the compiled-time checked constructor.
+#[cfg(feature = "macros")]
+pub use id_newtype_macros::id;
 
 #[macro_export]
 macro_rules! id_newtype {
@@ -252,8 +297,6 @@ macro_rules! id_newtype {
 #[cfg(test)]
 mod tests {
     use std::borrow::{Borrow, Cow};
-
-    use super::id_newtype;
 
     #[derive(Clone, Debug, Hash, PartialEq, Eq)]
     pub struct MyIdType(Cow<'static, str>);

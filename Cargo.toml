@@ -1,19 +1,53 @@
-[package]
-name = "id_newtype"
-version = "0.1.0"
-description = "Implements logic for a `Cow<'static, str>` newtype where only `[A-Za-z0-9_]` are valid characters."
-documentation = "https://docs.rs/id_newtype/"
+[workspace.package]
 authors = ["Azriel Hoh <azriel91@gmail.com>"]
-edition = "2021"
-homepage = "https://github.com/azriel91/id_newtype"
+version = "0.2.0"
+edition = "2024"
 repository = "https://github.com/azriel91/id_newtype"
+homepage = "https://github.com/azriel91/id_newtype"
 readme = "README.md"
 categories = ["config"]
-keywords = ["serde", "yaml", "error"]
+keywords = ["id"]
 license = "MIT OR Apache-2.0"
+
+[workspace]
+members = ["id_newtype_macros"]
+resolver = "2"
+
+[package]
+name = "id_newtype"
+description = "Implements logic for a `Cow<'static, str>` newtype where only `[A-Za-z0-9_]` are valid characters."
+documentation = "https://docs.rs/id_newtype/"
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme.workspace = true
+categories.workspace = true
+keywords.workspace = true
+license.workspace = true
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[features]
+default = []
+macros = ["dep:id_newtype_macros"]
+
+[dependencies]
+id_newtype_macros = { workspace = true, optional = true }
+
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen = "0.2.100"
+wasm-bindgen = { workspace = true }
+
+[workspace.dependencies]
+id_newtype_macros = { path = "id_newtype_macros", version = "0.2.0" }
+
+# external dependencies
+proc-macro2 = "1.0.103"
+quote = "1.0.42"
+syn = "2.0.109"
+wasm-bindgen = "0.2.105"
+
+[workspace.lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(coverage_nightly)"] }
