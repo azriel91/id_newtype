@@ -40,12 +40,7 @@ mod lit_str_maybe;
 /// ```
 #[proc_macro]
 pub fn id(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    ensure_valid_id(
-        &parse_macro_input!(input as LitStrMaybe),
-        "Id",
-        None,
-    )
-    .into()
+    ensure_valid_id(&parse_macro_input!(input as LitStrMaybe), "Id", None).into()
 }
 
 fn ensure_valid_id(
@@ -95,7 +90,7 @@ fn is_valid_id(proposed_id: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use proc_macro2::Span;
-    use syn::{parse_quote, LitStr};
+    use syn::LitStr;
 
     use crate::LitStrMaybe;
 
@@ -104,48 +99,35 @@ mod tests {
     #[test]
     fn name_beginning_with_underscore_is_valid() {
         let tokens = ensure_valid_id(
-            parse_quote!(peace::cfg),
             &LitStrMaybe(Some(LitStr::new("_", Span::call_site()))),
             "Ty",
             None,
         );
 
-        assert_eq!(
-            r#"Ty :: new_unchecked ("_")"#,
-            tokens.to_string()
-        );
+        assert_eq!(r#"Ty :: new_unchecked ("_")"#, tokens.to_string());
     }
 
     #[test]
     fn name_beginning_with_alpha_is_valid() {
         let tokens = ensure_valid_id(
-            parse_quote!(peace::cfg),
             &LitStrMaybe(Some(LitStr::new("a", Span::call_site()))),
             "Ty",
             None,
         );
-        assert_eq!(
-            r#"Ty :: new_unchecked ("a")"#,
-            tokens.to_string()
-        );
+        assert_eq!(r#"Ty :: new_unchecked ("a")"#, tokens.to_string());
 
         let tokens = ensure_valid_id(
-            parse_quote!(peace::cfg),
             &LitStrMaybe(Some(LitStr::new("A", Span::call_site()))),
             "Ty",
             None,
         );
 
-        assert_eq!(
-            r#"Ty :: new_unchecked ("A")"#,
-            tokens.to_string()
-        );
+        assert_eq!(r#"Ty :: new_unchecked ("A")"#, tokens.to_string());
     }
 
     #[test]
     fn name_beginning_with_number_is_invalid() {
         let tokens = ensure_valid_id(
-            parse_quote!(peace::cfg),
             &LitStrMaybe(Some(LitStr::new("1", Span::call_site()))),
             "Ty",
             None,
@@ -161,7 +143,6 @@ mod tests {
     #[test]
     fn name_containing_space_is_invalid() {
         let tokens = ensure_valid_id(
-            parse_quote!(peace::cfg),
             &LitStrMaybe(Some(LitStr::new("a b", Span::call_site()))),
             "Ty",
             None,
@@ -177,7 +158,6 @@ mod tests {
     #[test]
     fn name_containing_hyphen_is_invalid() {
         let tokens = ensure_valid_id(
-            parse_quote!(peace::cfg),
             &LitStrMaybe(Some(LitStr::new("a-b", Span::call_site()))),
             "Ty",
             None,
@@ -193,7 +173,6 @@ mod tests {
     #[test]
     fn name_empty_string_is_invalid() {
         let tokens = ensure_valid_id(
-            parse_quote!(peace::cfg),
             &LitStrMaybe(Some(LitStr::new("", Span::call_site()))),
             "Ty",
             None,
@@ -208,7 +187,7 @@ mod tests {
 
     #[test]
     fn name_none_is_invalid() {
-        let tokens = ensure_valid_id(parse_quote!(peace::cfg), &LitStrMaybe(None), "Ty", None);
+        let tokens = ensure_valid_id(&LitStrMaybe(None), "Ty", None);
 
         assert_eq!(
             "compile_error ! (\"`` is not a valid `Ty`.\\n\
