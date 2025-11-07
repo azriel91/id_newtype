@@ -68,8 +68,8 @@
 //!
 //! ## Features
 //!
-//! * `"macros"` This feature enables the `id!` compile-time checked
-//!   proc macro for safe construction of IDs at compile time.
+//! * `"macros"` This feature enables the `id!` compile-time checked proc macro
+//!   for safe construction of IDs at compile time.
 //!
 //!     ```rust
 //!     use id_newtype::id;
