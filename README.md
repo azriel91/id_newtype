@@ -38,6 +38,8 @@ id_newtype = { version = "0.2.0", features = ["macros"] }
 
 In code:
 
+<details open>
+
 ```rust
 // in lib.rs
 #[macro_use]
@@ -56,8 +58,12 @@ id_newtype::id_newtype!(
 );
 ```
 
+</details>
+
 If you have a procedural macro that checks for ID validity<sup>1</sup> at
 compile time, you may pass in its name as follows:
+
+<details open>
 
 ```rust
 #[macro_use]
@@ -85,6 +91,41 @@ the `id!` macro, or implement your own proc macro. See
 [`id_newtype_macros`][macros_crate] for an example.
 
 [macros_crate]: https://github.com/azriel91/id_newtype/id_newtype_macros
+
+</details>
+
+Finally, if you pass in a lifetime parameter (4th param) to the macro, the
+generated type can hold borrowed data:
+
+<details open>
+
+```rust
+#[macro_use]
+extern crate id_newtype;
+
+use std::borrow::Cow;
+
+// Either use `id_newtype::id`, or replace this with your own proc macro.
+use id_newtype::id;
+// use my_crate_static_check_macros::my_id;
+
+// Rename your ID type
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub struct MyId<'id>(Cow<'id, str>);
+
+id_newtype::id_newtype!(
+    MyId,           // Name of the ID type
+    MyIdInvalidFmt, // Name of the invalid value error
+    my_id           // Name of the proc macro
+    'id             // Lifetime parameter
+);
+```
+
+A `MyId<'id>` can be converted into `MyId<'static>` by using
+`my_id.into_static()` which takes `self`.
+
+</details>
+
 
 ## Features
 
