@@ -1,6 +1,6 @@
 # Changelog
 
-## unreleased
+## 0.3.0 (2026-01-09)
 
 * Support borrowed string instead of owned string.
 * Add `into_static(self)` method for types that provide a lifetime.
