@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 (2026-01-09)
+
+* Support borrowed string instead of owned string.
+* Add `into_static(self)` method for types that provide a lifetime.
+
+
 ## 0.2.0 (2025-11-08)
 
 * Update Rust edition to 2024.

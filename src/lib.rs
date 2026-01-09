@@ -7,6 +7,7 @@
 //! * `IdType::new_unchecked` (with `#[doc(hidden)]`)
 //! * `IdType::is_valid_id`
 //! * `IdType::into_inner`
+//! * `IdType::into_static`
 //! * `std::borrow::Borrow<str>`
 //! * `std::convert::AsRef<str>`
 //! * `std::convert::TryFrom<String>`
@@ -25,8 +26,8 @@
 //! In `Cargo.toml`:
 //!
 //! ```toml
-//! id_newtype = "0.2.0" # or
-//! id_newtype = { version = "0.2.0", features = ["macros"] }
+//! id_newtype = "0.3.0" # or
+//! id_newtype = { version = "0.3.0", features = ["macros"] }
 //! ```
 //!
 //! In code:
@@ -79,6 +80,29 @@
 //!
 //! [macros_crate]: https://github.com/azriel91/id_newtype/id_newtype_macros
 //!
+//! ## Lifetime-Parameterized ID Types
+//!
+//! If you want your ID type to support borrowed strings with non-`'static`
+//! lifetimes, you can pass a lifetime parameter as the fourth argument:
+//!
+//! ```rust
+//! #[macro_use]
+//! extern crate id_newtype;
+//!
+//! use std::borrow::Cow;
+//!
+//! // Define an ID type with a generic lifetime
+//! #[derive(Clone, Debug, Hash, PartialEq, Eq)]
+//! pub struct MyId<'s>(Cow<'s, str>);
+//!
+//! id_newtype::id_newtype!(
+//!     MyId,           // Name of the ID type
+//!     MyIdInvalidFmt, // Name of the invalid value error
+//!     my_id,          // Name of the proc macro
+//!     's              // Lifetime parameter
+//! );
+//! ```
+//!
 //! ## Features
 //!
 //! * `"macros"` This feature enables the `id!` compile-time checked proc macro
@@ -112,6 +136,7 @@ pub use id_newtype_macros::id;
 
 #[macro_export]
 macro_rules! id_newtype {
+    // No macro name, no lifetime
     ($ty_name:ident, $ty_err_name:ident) => {
         impl $ty_name {
             #[doc = concat!("Returns a new `", stringify!($ty_name), "` if the given `&str` is valid.")]
@@ -137,6 +162,7 @@ macro_rules! id_newtype {
         id_newtype!(IMPL; $ty_name, $ty_err_name);
     };
 
+    // With macro name, no lifetime
     ($ty_name:ident, $ty_err_name:ident, $macro_name:ident) => {
         impl $ty_name {
             #[doc = concat!("Returns a new `", stringify!($ty_name), "` if the given `&str` is valid.")]
@@ -162,6 +188,33 @@ macro_rules! id_newtype {
         id_newtype!(IMPL; $ty_name, $ty_err_name);
     };
 
+    // With macro name and lifetime parameter (new)
+    ($ty_name:ident, $ty_err_name:ident, $macro_name:ident, $lt:lifetime) => {
+        impl<$lt> $ty_name<$lt> {
+            #[doc = concat!("Returns a new `", stringify!($ty_name), "` if the given `&str` is valid.")]
+            ///
+            #[doc = concat!("Most users should use the `", stringify!($macro_name), "!` macro as this provides")]
+            /// compile time checks and returns a `const` value.
+            pub fn new(s: &$lt str) -> Result<Self, $ty_err_name<$lt>> {
+                Self::try_from(s)
+            }
+
+            #[doc = concat!("Returns a new `", stringify!($ty_name), "` without verification.")]
+            ///
+            #[doc = concat!("Most users should use the `", stringify!($macro_name), "!` macro as this provides")]
+            /// compile time checks and returns a `const` value.
+            ///
+            /// This is here for guaranteed valid usage such as being called from the macro.
+            #[doc(hidden)]
+            pub const fn new_unchecked(s: &$lt str) -> $ty_name<$lt> {
+                $ty_name(std::borrow::Cow::Borrowed(s))
+            }
+        }
+
+        id_newtype!(IMPL_LT; $ty_name, $ty_err_name, $lt);
+    };
+
+    // Implementation for static lifetime types
     (IMPL; $ty_name:ident, $ty_err_name:ident) => {
         impl $ty_name {
             /// Returns whether the provided `&str` is a valid station identifier.
@@ -292,6 +345,143 @@ macro_rules! id_newtype {
 
         impl<'s> std::error::Error for $ty_err_name<'s> {}
     };
+
+    // Implementation for lifetime-parameterized types (new)
+    (IMPL_LT; $ty_name:ident, $ty_err_name:ident, $lt:lifetime) => {
+        impl<$lt> $ty_name<$lt> {
+            /// Returns whether the provided `&str` is a valid station identifier.
+            pub fn is_valid_id(proposed_id: &str) -> bool {
+                let mut chars = proposed_id.chars();
+                let first_char = chars.next();
+                let first_char_valid = first_char
+                    .map(|c| c.is_ascii_alphabetic() || c == '_')
+                    .unwrap_or(false);
+                let remainder_chars_valid =
+                    chars.all(|c| c.is_ascii_alphabetic() || c == '_' || c.is_ascii_digit());
+
+                first_char_valid && remainder_chars_valid
+            }
+
+            #[doc = concat!("Returns the inner `Cow<'", stringify!($lt), ", str>`.")]
+            pub fn into_inner(self) -> Cow<$lt, str> {
+                self.0
+            }
+
+            #[doc = concat!("Returns this with owned data.")]
+            pub fn into_static(self) -> $ty_name<'static> {
+                $ty_name(Cow::Owned(self.0.into_owned()))
+            }
+
+            /// Returns the `&str` held by this ID.
+            pub fn as_str(&self) -> &str {
+                &self.0
+            }
+        }
+
+        impl<$lt> std::ops::Deref for $ty_name<$lt> {
+            type Target = std::borrow::Cow<$lt, str>;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+
+        impl<$lt> std::fmt::Display for $ty_name<$lt> {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                write!(f, "{}", self.0)
+            }
+        }
+
+        impl<$lt> TryFrom<String> for $ty_name<$lt> {
+            type Error = $ty_err_name<'static>;
+
+            fn try_from(s: String) -> Result<$ty_name<$lt>, $ty_err_name<'static>> {
+                if Self::is_valid_id(&s) {
+                    Ok($ty_name(std::borrow::Cow::Owned(s)))
+                } else {
+                    let s = std::borrow::Cow::Owned(s);
+                    Err($ty_err_name::new(s))
+                }
+            }
+        }
+
+        impl<$lt> TryFrom<&$lt str> for $ty_name<$lt> {
+            type Error = $ty_err_name<$lt>;
+
+            fn try_from(s: &$lt str) -> Result<$ty_name<$lt>, $ty_err_name<$lt>> {
+                if Self::is_valid_id(s) {
+                    Ok($ty_name(std::borrow::Cow::Borrowed(s)))
+                } else {
+                    let s = std::borrow::Cow::Borrowed(s);
+                    Err($ty_err_name::new(s))
+                }
+            }
+        }
+
+        impl<$lt> std::str::FromStr for $ty_name<$lt> {
+            type Err = $ty_err_name<'static>;
+
+            fn from_str(s: &str) -> Result<$ty_name<$lt>, $ty_err_name<'static>> {
+                if Self::is_valid_id(s) {
+                    Ok($ty_name(std::borrow::Cow::Owned(String::from(s))))
+                } else {
+                    let s = std::borrow::Cow::Owned(String::from(s));
+                    Err($ty_err_name::new(s))
+                }
+            }
+        }
+
+        impl<$lt> std::convert::AsRef<str> for $ty_name<$lt> {
+            fn as_ref(&self) -> &str {
+                &self.0
+            }
+        }
+
+        impl<$lt> std::borrow::Borrow<str> for $ty_name<$lt> {
+            fn borrow(&self) -> &str {
+                &self.0
+            }
+        }
+
+        impl<'__borrow, $lt> std::borrow::Borrow<str> for &'__borrow $ty_name<$lt> {
+            fn borrow(&self) -> &str {
+                &self.0
+            }
+        }
+
+        #[doc = concat!("Error indicating `", stringify!($ty_name), "` provided is not in the correct format.")]
+        #[derive(Clone, Debug, PartialEq, Eq)]
+        pub struct $ty_err_name<'__err> {
+            /// String that was provided for the `$ty_name`.
+            value: std::borrow::Cow<'__err, str>,
+        }
+
+        impl<'__err> $ty_err_name<'__err> {
+            #[doc = concat!("Returns a new `", stringify!($ty_err_name), "` error.")]
+            pub fn new(value: std::borrow::Cow<'__err, str>) -> Self {
+                Self { value }
+            }
+
+            #[doc = concat!("Returns the value that failed to be parsed as a [`", stringify!($ty_name), "`].")]
+            pub fn value(&self) -> &std::borrow::Cow<'__err, str> {
+                &self.value
+            }
+        }
+
+        impl<'__err> std::fmt::Display for $ty_err_name<'__err> {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                write!(
+                    f,
+                    "`{value}` is not a valid `{ty_name}`.\n\
+                    `{ty_name}`s must begin with a letter or underscore, and contain only letters, numbers, or underscores.",
+                    ty_name = stringify!($ty_name),
+                    value = self.value
+                )
+            }
+        }
+
+        impl<'__err> std::error::Error for $ty_err_name<'__err> {}
+    };
 }
 
 #[cfg(test)]
@@ -313,6 +503,17 @@ mod tests {
         MyIdType2,           // Name of the ID type
         MyIdType2InvalidFmt, // Name of the invalid value error
         my_id_static_macro
+    );
+
+    // Test for lifetime-parameterized ID type
+    #[derive(Clone, Debug, Hash, PartialEq, Eq)]
+    pub struct MyIdType3<'s>(Cow<'s, str>);
+
+    crate::id_newtype!(
+        MyIdType3,           // Name of the ID type
+        MyIdType3InvalidFmt, // Name of the invalid value error
+        my_id_lt_macro,      // Name of the proc macro
+        's                   // Lifetime parameter
     );
 
     #[test]
@@ -357,5 +558,125 @@ mod tests {
 
         assert_eq!("one", Borrow::<str>::borrow(&my_id));
         assert_eq!("one", Borrow::<str>::borrow(&&my_id));
+    }
+
+    // Tests for lifetime-parameterized ID type
+    #[test]
+    fn lt_new() {
+        let new_result = MyIdType3::new("one");
+
+        assert_eq!(Ok(MyIdType3::new_unchecked("one")), new_result);
+    }
+
+    #[test]
+    fn lt_new_with_borrowed_string() {
+        let s = String::from("valid_id");
+        let new_result: Result<MyIdType3<'_>, _> = MyIdType3::try_from(s.as_str());
+
+        assert!(new_result.is_ok());
+        assert_eq!("valid_id", new_result.unwrap().as_str());
+    }
+
+    #[test]
+    fn lt_new_invalid() {
+        let s = String::from("invalid id");
+        let new_result: Result<MyIdType3<'_>, _> = MyIdType3::try_from(s.as_str());
+
+        assert!(new_result.is_err());
+    }
+
+    #[test]
+    fn lt_is_valid_id() {
+        assert!(MyIdType3::is_valid_id(
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
+        ));
+        assert!(!MyIdType3::is_valid_id("invalid with space"));
+    }
+
+    #[test]
+    fn lt_into_inner() {
+        let my_id = MyIdType3::new_unchecked("one");
+
+        assert_eq!("one", my_id.into_inner());
+    }
+
+    #[test]
+    fn lt_into_static() {
+        let s = String::from("one");
+        let my_id = MyIdType3::new_unchecked(s.as_str());
+        let my_id_static = my_id.into_static();
+
+        assert_eq!("one", my_id_static.as_ref());
+
+        drop(s);
+
+        // If this compiles, it means `my_id_static` is not tied to the lifetime of `s`.
+        drop(my_id_static);
+    }
+
+    #[test]
+    fn lt_as_str() {
+        let my_id = MyIdType3::new_unchecked("one");
+
+        assert_eq!("one", my_id.as_str());
+    }
+
+    #[test]
+    fn lt_as_ref_str() {
+        let my_id = MyIdType3::new_unchecked("one");
+
+        assert_eq!("one", my_id.as_ref());
+    }
+
+    #[test]
+    fn lt_borrow() {
+        let my_id = MyIdType3::new_unchecked("one");
+
+        assert_eq!("one", Borrow::<str>::borrow(&my_id));
+        assert_eq!("one", Borrow::<str>::borrow(&&my_id));
+    }
+
+    #[test]
+    fn lt_from_str() {
+        use std::str::FromStr;
+
+        let my_id: MyIdType3<'_> = MyIdType3::from_str("valid_id").unwrap();
+        assert_eq!("valid_id", my_id.as_str());
+    }
+
+    #[test]
+    fn lt_try_from_string() {
+        let my_id: MyIdType3<'_> = MyIdType3::try_from(String::from("valid_id")).unwrap();
+        assert_eq!("valid_id", my_id.as_str());
+    }
+
+    #[test]
+    fn lt_display() {
+        let my_id = MyIdType3::new_unchecked("one");
+        assert_eq!("one", format!("{}", my_id));
+    }
+
+    #[test]
+    fn lt_deref() {
+        let my_id = MyIdType3::new_unchecked("one");
+        let cow: &Cow<'_, str> = &*my_id;
+        assert_eq!("one", cow.as_ref());
+    }
+
+    #[test]
+    fn lt_borrowed_lifetime_tied_to_source() {
+        // This test verifies that the ID's lifetime is properly tied to the source
+        // string. The ID borrows from `s` and its lifetime is bounded by `s`.
+        fn create_id_from_str<'a>(s: &'a str) -> Result<MyIdType3<'a>, MyIdType3InvalidFmt<'a>> {
+            MyIdType3::try_from(s)
+        }
+
+        let owned = String::from("test_id");
+        let id = create_id_from_str(&owned).unwrap();
+        assert_eq!("test_id", id.as_str());
+
+        // Verify that owned strings still work via FromStr
+        let owned_id: MyIdType3<'_> = owned.parse().unwrap();
+        assert_eq!("test_id", owned_id.as_str());
     }
 }
